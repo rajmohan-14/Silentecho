@@ -23,7 +23,7 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 HMAC_SECRET = os.getenv('HMAC_SECRET')
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
-
+DEBUG=True
 
 # Application definition
 

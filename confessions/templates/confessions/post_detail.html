@@ -1,0 +1,52 @@
+{% extends "confessions/base.html" %}
+
+{% block content %}
+
+<a href="{% url 'feed' %}" class="text-zinc-500 hover:text-zinc-300 text-sm mb-6 inline-block transition">← Back to feed</a>
+
+<!-- The post -->
+<div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 mb-6">
+  <div class="flex items-center gap-2 mb-3">
+    <span class="text-xs px-2 py-1 rounded-full bg-purple-500/10 text-purple-400">{{ post.get_mood_tag_display }}</span>
+    <span class="text-xs px-2 py-1 rounded-full bg-zinc-800 text-zinc-400">{{ post.get_category_display }}</span>
+    <span class="text-xs text-zinc-600 ml-auto">{{ post.created_at|timesince }} ago</span>
+  </div>
+  <p class="text-zinc-200 leading-relaxed">{{ post.content }}</p>
+</div>
+
+<!-- Replies -->
+<h2 class="text-sm font-medium text-zinc-400 mb-3">{{ replies.count }} {{ replies.count|pluralize:"reply,replies" }}</h2>
+
+{% for reply in replies %}
+<div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-3">
+  <p class="text-zinc-300 text-sm leading-relaxed mb-3">{{ reply.content }}</p>
+  <div class="flex items-center justify-between">
+    <span class="text-xs text-zinc-600">{{ reply.created_at|timesince }} ago</span>
+    <span class="text-xs text-zinc-500">{{ reply.helpful_votes }} found this helpful</span>
+  </div>
+</div>
+{% empty %}
+<p class="text-zinc-600 text-sm py-4">No replies yet. Be the first to offer support.</p>
+{% endfor %}
+
+<!-- Reply form -->
+<div class="mt-6 bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+  <h3 class="text-sm font-medium text-zinc-300 mb-3">Reply with support</h3>
+  <form method="POST" class="flex flex-col gap-3">
+    {% csrf_token %}
+    <textarea
+      name="content"
+      maxlength="300"
+      rows="3"
+      placeholder="Offer support anonymously..."
+      class="bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-sm text-zinc-100 placeholder-zinc-600 resize-none focus:outline-none focus:border-purple-500 transition"
+    ></textarea>
+    <div class="flex justify-end">
+      <button type="submit" class="bg-purple-500 hover:bg-purple-400 text-black font-medium px-4 py-2 rounded-lg text-sm transition">
+        Send reply →
+      </button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

@@ -1,20 +1,16 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
-from .models import Post, Reply, SessionKarma
+from django.http import JsonResponse
+from .models import Post, Reply, SessionKarma, ModerationQueue
+from .filters import should_auto_approve, check_flagged, check_crisis
 
 
 def feed(request):
-    """
-    Homepage. Shows all approved, non-expired posts.
-    Supports filtering by mood and category via query params.
-    e.g. /?mood=anxious&category=career
-    """
     posts = Post.objects.filter(
         is_approved=True,
         expires_at__gt=timezone.now()
     ).order_by('-created_at')
 
-  
     mood     = request.GET.get('mood', '')
     category = request.GET.get('category', '')
 
@@ -24,29 +20,30 @@ def feed(request):
         posts = posts.filter(category=category)
 
     context = {
-        'posts':    posts,
-        'mood':     mood,
-        'category': category,
-        'moods':    Post.MOOD_CHOICES,
+        'posts':      posts,
+        'mood':       mood,
+        'category':   category,
+        'moods':      Post.MOOD_CHOICES,
         'categories': Post.CATEGORY_CHOICES,
     }
     return render(request, 'confessions/feed.html', context)
 
 
 def submit_post(request):
-    """
-    GET  → show the submission form
-    POST → validate and save the new post
-    """
+    crisis   = False
+    errors   = []
+
     if request.method == 'POST':
         content  = request.POST.get('content', '').strip()
         mood_tag = request.POST.get('mood_tag', '')
         category = request.POST.get('category', '')
 
-        errors = []
+        # Check for crisis keywords
+        crisis = check_crisis(content)
+
         if not content:
             errors.append('Post cannot be empty.')
-        if len(content) > 500:
+        elif len(content) > 500:
             errors.append('Post must be under 500 characters.')
         if not mood_tag:
             errors.append('Please select a mood.')
@@ -54,34 +51,45 @@ def submit_post(request):
             errors.append('Please select a category.')
 
         if not errors:
-            Post.objects.create(
-                session_token=request.session_token,
-                content=content,
-                mood_tag=mood_tag,
-                category=category,
-                is_approved=False,  # goes to moderation queue first
-            )
-            return redirect('feed')
+            # Decide if post needs moderation or can go live
+            auto_approve = should_auto_approve(content)
+            is_flagged   = check_flagged(content)
 
-        context = {
-            'errors':     errors,
-            'moods':      Post.MOOD_CHOICES,
-            'categories': Post.CATEGORY_CHOICES,
-        }
-        return render(request, 'confessions/submit.html', context)
+            post = Post.objects.create(
+                session_token = request.session_token,
+                content       = content,
+                mood_tag      = mood_tag,
+                category      = category,
+                is_approved   = auto_approve,
+            )
+
+            # Send flagged posts to moderation queue
+            if is_flagged:
+                ModerationQueue.objects.create(
+                    post   = post,
+                    reason = 'Auto-flagged by keyword filter',
+                )
+
+            if auto_approve:
+                return redirect('feed')
+            else:
+                return redirect('post_pending')
 
     context = {
+        'errors':     errors,
+        'crisis':     crisis,
         'moods':      Post.MOOD_CHOICES,
         'categories': Post.CATEGORY_CHOICES,
     }
     return render(request, 'confessions/submit.html', context)
 
 
+def post_pending(request):
+    """Shown after a flagged post is submitted."""
+    return render(request, 'confessions/post_pending.html')
+
+
 def post_detail(request, post_id):
-    """
-    Shows a single post with all its replies.
-    Also handles new reply submissions.
-    """
     post    = get_object_or_404(Post, id=post_id, is_approved=True)
     replies = post.replies.filter(is_flagged=False).order_by('created_at')
 
@@ -89,9 +97,9 @@ def post_detail(request, post_id):
         content = request.POST.get('content', '').strip()
         if content and len(content) <= 300:
             Reply.objects.create(
-                post=post,
-                session_token=request.session_token,
-                content=content,
+                post          = post,
+                session_token = request.session_token,
+                content       = content,
             )
             return redirect('post_detail', post_id=post.id)
 
@@ -100,3 +108,55 @@ def post_detail(request, post_id):
         'replies': replies,
     }
     return render(request, 'confessions/post_detail.html', context)
+
+
+def vote_helpful(request, reply_id):
+    """
+    Called when someone clicks 'This helped me' on a reply.
+    - Increments helpful_votes on the Reply
+    - Gives +1 karma to the reply author's session
+    - Updates posts_helped count
+    """
+    if request.method == 'POST':
+        reply = get_object_or_404(Reply, id=reply_id)
+
+       
+        if reply.session_token == request.session_token:
+            return JsonResponse({'error': 'Cannot vote on your own reply'}, status=400)
+
+       
+        reply.helpful_votes += 1
+        reply.save()
+
+        karma, created = SessionKarma.objects.get_or_create(
+            session_token=reply.session_token,
+            defaults={'karma_points': 0, 'posts_helped': 0}
+        )
+        karma.karma_points += 1
+        karma.posts_helped += 1
+        karma.save()
+
+    
+        reply.post.karma_received += 1
+        reply.post.save()
+
+        return JsonResponse({
+            'helpful_votes': reply.helpful_votes,
+            'message': 'Vote recorded'
+        })
+
+    return JsonResponse({'error': 'POST required'}, status=405)
+
+
+def report_post(request, post_id):
+    """User-reported content goes to moderation queue."""
+    if request.method == 'POST':
+        post = get_object_or_404(Post, id=post_id)
+        
+        if not ModerationQueue.objects.filter(post=post, status='pending').exists():
+            ModerationQueue.objects.create(
+                post   = post,
+                reason = 'User reported',
+            )
+        return JsonResponse({'message': 'Reported. Thank you.'})
+    return JsonResponse({'error': 'POST required'}, status=405)

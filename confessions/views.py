@@ -3,7 +3,7 @@ from django.utils import timezone
 from django.http import JsonResponse
 from .models import Post, Reply, SessionKindness, ModerationQueue
 from .filters import should_auto_approve, check_flagged, check_crisis
-
+from moderator.utils import check_and_nominate 
 
 def feed(request):
     import json
@@ -97,7 +97,7 @@ def submit_post(request):
 
 
 def post_pending(request):
-    """Shown after a flagged post is submitted."""
+    
     return render(request, 'confessions/post_pending.html')
 
 
@@ -123,12 +123,7 @@ def post_detail(request, post_id):
 
 
 def vote_helpful(request, reply_id):
-    """
-    Called when someone clicks 'This helped me' on a reply.
-    - Increments helpful_votes on the Reply
-    - Gives +1 kindness to the reply author's session
-    - Updates people_helped count
-    """
+   
     if request.method == 'POST':
         reply = get_object_or_404(Reply, id=reply_id)
 
@@ -147,7 +142,8 @@ def vote_helpful(request, reply_id):
         kindness.kindness_points += 1
         kindness.people_helped += 1
         kindness.save()
-
+        from moderator.utils import check_and_nominate
+        check_and_nominate(reply.session_token)
     
         reply.post.kindness_received += 1
         reply.post.save()

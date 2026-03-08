@@ -1,8 +1,193 @@
 {% extends "confessions/base.html" %}
 
 {% block content %}
-<div class="text-center py-16">
-  <h1 class="text-2xl font-serif mb-2">Moderator Dashboard</h1>
-  <p class="text-zinc-500 text-sm">Coming together in 6b.</p>
+
+<!-- Header -->
+<div class="flex items-center justify-between mb-8">
+  <div>
+    <h1 class="text-2xl font-serif mb-1">Moderator Dashboard</h1>
+    <p class="text-zinc-500 text-sm">Review flagged content and keep the community safe.</p>
+  </div>
+  <div class="flex items-center gap-3">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-center">
+      <div class="text-xl font-serif text-purple-400">{{ pending_count }}</div>
+      <div class="text-xs text-zinc-500">pending</div>
+    </div>
+    <div class="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-center">
+      <div class="text-xl font-serif text-green-400">{{ daily_remaining }}</div>
+      <div class="text-xs text-zinc-500">actions left today</div>
+    </div>
+    <div class="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-center">
+      <div class="text-xl font-serif text-yellow-400">{{ mod_role.total_actions }}</div>
+      <div class="text-xs text-zinc-500">total reviews</div>
+    </div>
+  </div>
 </div>
+
+<!-- Daily limit warning -->
+{% if daily_remaining == 0 %}
+<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-6">
+  <p class="text-yellow-400 text-sm">⚠️ You've reached your daily limit of 10 actions. Come back tomorrow.</p>
+</div>
+{% endif %}
+
+<!-- Pending Queue -->
+<h2 class="text-sm font-medium text-zinc-400 mb-4 uppercase tracking-wider">
+  Pending Review
+</h2>
+
+{% if pending %}
+  <div class="flex flex-col gap-4 mb-10" id="pendingQueue">
+    {% for item in pending %}
+    <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5" id="queue-{{ item.id }}">
+
+      <!-- Post header -->
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-xs px-2 py-1 rounded-full bg-purple-500/10 text-purple-400">
+          {{ item.post.get_mood_tag_display }}
+        </span>
+        <span class="text-xs px-2 py-1 rounded-full bg-zinc-800 text-zinc-400">
+          {{ item.post.get_category_display }}
+        </span>
+        <span class="text-xs text-zinc-600 ml-auto">
+          {{ item.post.created_at|timesince }} ago
+        </span>
+      </div>
+
+      <!-- Post content -->
+      <p class="text-zinc-200 text-sm leading-relaxed mb-4">
+        {{ item.post.content }}
+      </p>
+
+      <!-- Flag reason -->
+      <div class="bg-zinc-800 rounded-lg px-3 py-2 mb-4">
+        <span class="text-xs text-zinc-500">
+          🚩 Flagged reason: 
+        </span>
+        <span class="text-xs text-zinc-300">{{ item.reason }}</span>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-3 pt-3 border-t border-zinc-800">
+        <button
+          onclick="reviewPost({{ item.id }}, 'approve', this)"
+          class="flex-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400 text-sm font-medium py-2 rounded-lg transition"
+        >
+          ✓ Approve — post goes live
+        </button>
+        <button
+          onclick="reviewPost({{ item.id }}, 'reject', this)"
+          class="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-medium py-2 rounded-lg transition"
+        >
+          ✕ Reject — keep hidden
+        </button>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+{% else %}
+  <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-10 text-center mb-10">
+    <div class="text-3xl mb-3">✨</div>
+    <p class="text-zinc-400 text-sm">Queue is empty. All caught up!</p>
+  </div>
+{% endif %}
+
+<!-- Recently Reviewed -->
+{% if reviewed %}
+<h2 class="text-sm font-medium text-zinc-400 mb-4 uppercase tracking-wider">
+  Recently Reviewed
+</h2>
+<div class="flex flex-col gap-3">
+  {% for item in reviewed %}
+  <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 opacity-60">
+    <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center gap-2">
+        <span class="text-xs px-2 py-1 rounded-full bg-zinc-800 text-zinc-400">
+          {{ item.post.get_mood_tag_display }}
+        </span>
+        <span class="text-xs px-2 py-1 rounded-full bg-zinc-800 text-zinc-400">
+          {{ item.post.get_category_display }}
+        </span>
+      </div>
+      <span class="text-xs px-2 py-1 rounded-full
+        {% if item.status == 'approved' %}
+          bg-green-500/10 text-green-400
+        {% else %}
+          bg-red-500/10 text-red-400
+        {% endif %}
+      ">
+        {{ item.status }}
+      </span>
+    </div>
+    <p class="text-zinc-500 text-xs leading-relaxed truncate">
+      {{ item.post.content }}
+    </p>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- JavaScript for approve/reject -->
+<script>
+const csrfToken = document.cookie
+  .split('; ')
+  .find(row => row.startsWith('csrftoken='))
+  ?.split('=')[1];
+
+function reviewPost(queueId, action, btn) {
+  const card     = document.getElementById(`queue-${queueId}`);
+  const allBtns  = card.querySelectorAll('button');
+
+  // Disable both buttons
+  allBtns.forEach(b => b.disabled = true);
+
+  const url = action === 'approve'
+    ? `/moderator/approve/${queueId}/`
+    : `/moderator/reject/${queueId}/`;
+
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': csrfToken,
+      'Content-Type': 'application/json',
+    },
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.error) {
+      // Show error — likely daily limit
+      allBtns.forEach(b => b.disabled = false);
+      alert(data.error);
+      return;
+    }
+
+    // Animate card out
+    card.style.transition = 'all 0.3s ease';
+    card.style.opacity    = '0';
+    card.style.transform  = 'translateX(20px)';
+
+    setTimeout(() => {
+      card.remove();
+
+      // Update pending count
+      const remaining = document.querySelectorAll('[id^="queue-"]').length;
+      if (remaining === 0) {
+        document.getElementById('pendingQueue').innerHTML = `
+          <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-10 text-center">
+            <div class="text-3xl mb-3">✨</div>
+            <p class="text-zinc-400 text-sm">Queue is empty. All caught up!</p>
+          </div>
+        `;
+      }
+    }, 300);
+  })
+  .catch(() => {
+    allBtns.forEach(b => b.disabled = false);
+    alert('Something went wrong. Try again.');
+  });
+}
+</script>
+
 {% endblock %}

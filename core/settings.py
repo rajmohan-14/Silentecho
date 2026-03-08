@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'confessions',
     'django_celery_beat',
+    'moderator',
 ]
 
 MIDDLEWARE = [

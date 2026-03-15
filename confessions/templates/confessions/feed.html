@@ -14,12 +14,12 @@
 
   <div class="flex-1 min-w-0">
 
-    
+ 
     <form
       hx-get="{% url 'feed' %}"
       hx-target="#posts-container"
       hx-swap="innerHTML"
-      hx-indicator="#htmx-spinner"
+      hx-indicator="#feed-skeleton"
       hx-trigger="change"
       class="flex flex-wrap gap-2 mb-5"
     >
@@ -42,17 +42,36 @@
       {% endif %}
     </form>
 
-    <!-- Posts container — HTMX swaps this -->
+    
+    <div id="feed-skeleton" class="htmx-indicator flex flex-col gap-4 mb-4">
+      {% for i in "123" %}
+      <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5 animate-pulse">
+        <div class="flex gap-2 mb-3">
+          <div class="h-5 w-20 bg-zinc-800 rounded-full"></div>
+          <div class="h-5 w-16 bg-zinc-800 rounded-full"></div>
+        </div>
+        <div class="space-y-2 mb-4">
+          <div class="h-3 bg-zinc-800 rounded w-full"></div>
+          <div class="h-3 bg-zinc-800 rounded w-4/5"></div>
+          <div class="h-3 bg-zinc-800 rounded w-3/5"></div>
+        </div>
+        <div class="h-1 bg-zinc-800 rounded-full"></div>
+      </div>
+      {% endfor %}
+    </div>
+
+ 
     <div id="posts-container">
       {% include "confessions/partials/posts.html" %}
     </div>
 
   </div>
 
-  <!-- Right sidebar — stacks below on mobile, beside on desktop -->
+
+
   <div class="w-full lg:w-64 lg:flex-shrink-0">
 
-    <!-- Top helpers widget -->
+ 
     {% if highlights %}
     <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-4">
       <h3 class="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-4">
@@ -115,6 +134,8 @@
 
   </div>
 
+
 </div>
+
 
 {% endblock %}

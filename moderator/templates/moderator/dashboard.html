@@ -2,13 +2,14 @@
 
 {% block content %}
 
-<!-- Header -->
-<div class="flex items-center justify-between mb-8">
+<!-- Header — stacks on mobile -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
   <div>
     <h1 class="text-2xl font-serif mb-1">Moderator Dashboard</h1>
     <p class="text-zinc-500 text-sm">Review flagged content and keep the community safe.</p>
   </div>
-  <div class="flex items-center gap-3">
+  <!-- Stats row — wraps on mobile -->
+  <div class="flex flex-wrap items-center gap-3">
     <div class="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-center">
       <div class="text-xl font-serif text-purple-400">{{ pending_count }}</div>
       <div class="text-xs text-zinc-500">pending</div>
@@ -42,7 +43,7 @@
     <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5" id="queue-{{ item.id }}">
 
       <!-- Post header -->
-      <div class="flex items-center gap-2 mb-3">
+      <div class="flex flex-wrap items-center gap-2 mb-3">
         <span class="text-xs px-2 py-1 rounded-full bg-purple-500/10 text-purple-400">
           {{ item.post.get_mood_tag_display }}
         </span>
@@ -61,23 +62,21 @@
 
       <!-- Flag reason -->
       <div class="bg-zinc-800 rounded-lg px-3 py-2 mb-4">
-        <span class="text-xs text-zinc-500">
-          🚩 Flagged reason: 
-        </span>
+        <span class="text-xs text-zinc-500">🚩 Flagged reason: </span>
         <span class="text-xs text-zinc-300">{{ item.reason }}</span>
       </div>
 
-      <!-- Actions -->
-      <div class="flex items-center gap-3 pt-3 border-t border-zinc-800">
+      <!-- Actions — stack on mobile -->
+      <div class="flex flex-col sm:flex-row items-center gap-3 pt-3 border-t border-zinc-800">
         <button
           onclick="reviewPost({{ item.id }}, 'approve', this)"
-          class="flex-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400 text-sm font-medium py-2 rounded-lg transition"
+          class="w-full sm:flex-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400 text-sm font-medium py-2 rounded-lg transition"
         >
           ✓ Approve — post goes live
         </button>
         <button
           onclick="reviewPost({{ item.id }}, 'reject', this)"
-          class="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-medium py-2 rounded-lg transition"
+          class="w-full sm:flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-medium py-2 rounded-lg transition"
         >
           ✕ Reject — keep hidden
         </button>
@@ -102,8 +101,8 @@
 <div class="flex flex-col gap-3">
   {% for item in reviewed %}
   <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-4 opacity-60">
-    <div class="flex items-center justify-between mb-2">
-      <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+      <div class="flex flex-wrap items-center gap-2">
         <span class="text-xs px-2 py-1 rounded-full bg-zinc-800 text-zinc-400">
           {{ item.post.get_mood_tag_display }}
         </span>
@@ -137,8 +136,8 @@ const csrfToken = document.cookie
   ?.split('=')[1];
 
 function reviewPost(queueId, action, btn) {
-  const card     = document.getElementById(`queue-${queueId}`);
-  const allBtns  = card.querySelectorAll('button');
+  const card    = document.getElementById(`queue-${queueId}`);
+  const allBtns = card.querySelectorAll('button');
 
   // Disable both buttons
   allBtns.forEach(b => b.disabled = true);
@@ -157,7 +156,6 @@ function reviewPost(queueId, action, btn) {
   .then(res => res.json())
   .then(data => {
     if (data.error) {
-      // Show error — likely daily limit
       allBtns.forEach(b => b.disabled = false);
       alert(data.error);
       return;
@@ -170,8 +168,6 @@ function reviewPost(queueId, action, btn) {
 
     setTimeout(() => {
       card.remove();
-
-      // Update pending count
       const remaining = document.querySelectorAll('[id^="queue-"]').length;
       if (remaining === 0) {
         document.getElementById('pendingQueue').innerHTML = `

@@ -2,26 +2,26 @@
 
 {% block content %}
 
-<!-- Page header -->
+
 <div class="mb-6">
   <h1 class="text-2xl font-serif mb-1">What's on people's minds</h1>
   <p class="text-zinc-500 text-sm">Every post expires in 30 days. No names, ever.</p>
 </div>
 
-<!-- Two column layout -->
-<div class="flex gap-6">
 
-  <!-- Main feed — left column -->
+<div class="flex flex-col lg:flex-row gap-6">
+
+
   <div class="flex-1 min-w-0">
 
-    <!-- Filters with HTMX -->
+    
     <form
       hx-get="{% url 'feed' %}"
       hx-target="#posts-container"
       hx-swap="innerHTML"
       hx-indicator="#htmx-spinner"
       hx-trigger="change"
-      class="flex gap-2 mb-5 flex-wrap"
+      class="flex flex-wrap gap-2 mb-5"
     >
       <select name="mood" class="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-purple-500 transition">
         <option value="">All moods</option>
@@ -49,8 +49,8 @@
 
   </div>
 
-  <!-- Right sidebar -->
-  <div class="w-64 flex-shrink-0 hidden lg:block">
+  <!-- Right sidebar — stacks below on mobile, beside on desktop -->
+  <div class="w-full lg:w-64 lg:flex-shrink-0">
 
     <!-- Top helpers widget -->
     {% if highlights %}

@@ -66,9 +66,16 @@
 {% endfor %}
 
 <!-- Reply form -->
-<div class="mt-6 bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+<div class="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
   <h3 class="text-sm font-medium text-zinc-300 mb-3">Reply with support</h3>
-  <form method="POST" class="flex flex-col gap-3">
+  <form
+    hx-post="{% url 'post_detail' post.id %}"
+    hx-target="#replies-list"
+    hx-swap="innerHTML"
+    hx-indicator="#htmx-spinner"
+    hx-on::after-request="this.reset()"
+    class="flex flex-col gap-3"
+  >
     {% csrf_token %}
     <textarea
       name="content"
@@ -78,13 +85,15 @@
       class="bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-sm text-zinc-100 placeholder-zinc-600 resize-none focus:outline-none focus:border-purple-500 transition"
     ></textarea>
     <div class="flex justify-end">
-      <button type="submit" class="bg-purple-500 hover:bg-purple-400 text-black font-medium px-4 py-2 rounded-lg text-sm transition">
+      <button
+        type="submit"
+        class="bg-purple-500 hover:bg-purple-400 text-black font-medium px-4 py-2 rounded-lg text-sm transition"
+      >
         Send reply →
       </button>
     </div>
   </form>
 </div>
-
 <!-- Vote script -->
 <script>
 const csrfToken = document.cookie

@@ -10,6 +10,7 @@ def feed(request):
     import json
     import os
     from django.conf import settings
+    from django.db import models as django_models
 
     posts = Post.objects.filter(
         is_approved=True,
@@ -24,13 +25,13 @@ def feed(request):
     if category:
         posts = posts.filter(category=category)
 
-    
+    # If HTMX request → return just the posts partial
     if request.headers.get('HX-Request'):
         return render(request, 'confessions/partials/posts.html', {
             'posts': posts,
         })
 
-  
+    # Load weekly highlights
     highlights      = []
     highlights_path = os.path.join(settings.BASE_DIR, 'weekly_highlights.json')
     if os.path.exists(highlights_path):
@@ -41,12 +42,13 @@ def feed(request):
         except (json.JSONDecodeError, KeyError):
             highlights = []
 
-    
+    # Board stats
+    from .models import Reply, SessionKindness
     stats = {
         'total_posts':    Post.objects.filter(is_approved=True).count(),
         'total_replies':  Reply.objects.count(),
         'total_kindness': SessionKindness.objects.aggregate(
-            total=models.Sum('kindness_points')
+            total=django_models.Sum('kindness_points')
         )['total'] or 0,
     }
 

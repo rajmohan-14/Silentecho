@@ -32,6 +32,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'confessions.middleware.AnonymousSessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -115,3 +116,6 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(hour=8, minute=55, day_of_week=1),
     },
 }
+STATIC_URL  = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'

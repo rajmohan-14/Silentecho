@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run migrations
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY || 'ci-placeholder-secret-key' }}
+          DEBUG: 'True'
+          HMAC_SECRET: ${{ secrets.HMAC_SECRET || 'ci-placeholder-hmac-secret' }}
+        run: python manage.py migrate
+
+      - name: Run tests
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY || 'ci-placeholder-secret-key' }}
+          DEBUG: 'True'
+          HMAC_SECRET: ${{ secrets.HMAC_SECRET || 'ci-placeholder-hmac-secret' }}
+        run: python manage.py test
+
+      - name: Check collectstatic
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY || 'ci-placeholder-secret-key' }}
+          DEBUG: 'False'
+          HMAC_SECRET: ${{ secrets.HMAC_SECRET || 'ci-placeholder-hmac-secret' }}
+        run: python manage.py collectstatic --noinput
